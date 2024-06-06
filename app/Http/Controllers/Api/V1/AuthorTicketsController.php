@@ -4,13 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Ticket;
 use App\Policies\V1\TicketPolicy;
-use App\Http\Controllers\Controller;
 use App\Http\Filters\V1\TicketFilter;
 use App\Http\Resources\V1\TicketResource;
 use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Requests\Api\V1\UpdateTicketRequest;
 use App\Http\Requests\Api\V1\ReplaceTicketRequest;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class AuthorTicketsController extends ApiController
@@ -31,16 +29,14 @@ class AuthorTicketsController extends ApiController
      */
     public function store(StoreTicketRequest $request, $author_id)
     {
-        try {
-            $this->isAble('store', Ticket::class);
-
+        if($this->isAble('store', Ticket::class)){
             return new TicketResource(Ticket::create($request->mappedAttributes([
                 'author' => 'user_id'
             ])) );
 
-        } catch (AuthorizationException $ex) {
-            return $this->error('You are not allowed to create that resource', 401);
         }
+
+        return $this->error('You are not allowed to create that resource', 401);
     }
 
     public function replace(ReplaceTicketRequest $request, $author_id, $ticket_id)
@@ -51,15 +47,15 @@ class AuthorTicketsController extends ApiController
                         ->where('user_id', $author_id)
                         ->firstOrFail();
 
-            $this->isAble('replace', $ticket);
+            if( $this->isAble('replace', $ticket)){
+                $ticket->update($request->mappedAttributes());
+                return new TicketResource($ticket);
 
-            $ticket->update($request->mappedAttributes());
-            return new TicketResource($ticket);
+            }
 
+            return $this->error('You are not allowed to update that resource', 401);
         } catch (ModelNotFoundException $exception) {
             return $this->error('Ticket cannot be found.', 404);
-        } catch (AuthorizationException $ex) {
-            return $this->error('You are not allowed to update that resource', 401);
         }
     }
 
@@ -71,15 +67,15 @@ class AuthorTicketsController extends ApiController
                         ->where('user_id', $author_id)
                         ->firstOrFail();
 
-            $this->isAble('update', $ticket);
+            if($this->isAble('update', $ticket)) {
+                $ticket->update($request->mappedAttributes());
+                return new TicketResource($ticket);
+            }
 
-            $ticket->update($request->mappedAttributes());
-            return new TicketResource($ticket);
+            return $this->error('You are not allowed to update that resource', 401);
 
         } catch (ModelNotFoundException $exception) {
             return $this->error('Ticket cannot be found.', 404);
-        } catch (AuthorizationException $ex) {
-            return $this->error('You are not allowed to update that resource', 401);
         }
     }
 
@@ -93,15 +89,15 @@ class AuthorTicketsController extends ApiController
                         ->where('user_id', $author_id)
                         ->firstOrFail();
 
-            $this->isAble('delete', $ticket);
+            if($this->isAble('delete', $ticket)){
+                $ticket->delete();
+                return $this->ok('Ticket Successfully deleted');
+            }
 
-            $ticket->delete();
-            return $this->ok('Ticket Successfully deleted');
+            return $this->error('You are not allowed to delete that resource', 401);
 
         } catch (ModelNotFoundException $exception) {
             return $this->error('Ticket cannot be found.', 404);
-        } catch (AuthorizationException $ex) {
-            return $this->error('You are not allowed to update that resource', 401);
         }
     }
 }
