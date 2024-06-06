@@ -7,6 +7,7 @@ use App\Traits\ApiResponses;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\Api\LoginUserRequest;
+use App\Permissions\V1\Abilities;
 use Illuminate\Http\Request;
 
 class AuthController extends Controller
@@ -25,7 +26,9 @@ class AuthController extends Controller
 
         return $this->ok('Authenticated', [
             'token' => $user->createToken(
-                'API Token for ' . $user->email)->plainTextToken
+                'API Token for ' . $user->email,
+                Abilities::getAbilities($user),
+                now()->addMonth())->plainTextToken
         ]);
     }
 
