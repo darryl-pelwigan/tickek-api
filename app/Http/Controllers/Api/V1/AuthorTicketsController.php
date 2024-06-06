@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Models\User;
 use App\Models\Ticket;
 use App\Policies\V1\TicketPolicy;
 use App\Http\Filters\V1\TicketFilter;
@@ -15,89 +16,59 @@ class AuthorTicketsController extends ApiController
 {
     protected $policyClass = TicketPolicy::class;
 
-    public function index($author_id, TicketFilter $filters)
-    {
+    public function index(User $author, TicketFilter $filters) {
         return TicketResource::collection(
-            Ticket::where('user_id', $author_id)
-                ->filter($filters)
-                ->paginate()
+            Ticket::where('user_id', $author->id)->filter($filters)->paginate()
         );
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreTicketRequest $request, $author_id)
+    public function store(StoreTicketRequest $request, User $author)
     {
-        if($this->isAble('store', Ticket::class)){
+        if ($this->isAble('store', Ticket::class)) {
             return new TicketResource(Ticket::create($request->mappedAttributes([
-                'author' => 'user_id'
-            ])) );
-
+                'author' => $author->id
+            ])));
         }
 
-        return $this->error('You are not allowed to create that resource', 401);
+        return $this->notAuthorized('You are not authorized to create that resource');
     }
 
-    public function replace(ReplaceTicketRequest $request, $author_id, $ticket_id)
+    public function replace(ReplaceTicketRequest $request, User $author, Ticket $ticket)
     {
         // PUT
-        try {
-            $ticket = Ticket::where('id', $ticket_id)
-                        ->where('user_id', $author_id)
-                        ->firstOrFail();
+        if( $this->isAble('replace', $ticket)){
+            $ticket->update($request->mappedAttributes());
+            return new TicketResource($ticket);
 
-            if( $this->isAble('replace', $ticket)){
-                $ticket->update($request->mappedAttributes());
-                return new TicketResource($ticket);
-
-            }
-
-            return $this->error('You are not allowed to update that resource', 401);
-        } catch (ModelNotFoundException $exception) {
-            return $this->error('Ticket cannot be found.', 404);
         }
+
+        return $this->error('You are not allowed to update that resource', 401);
+
     }
 
-    public function update(UpdateTicketRequest $request, $author_id, $ticket_id)
+    // PATCH
+    public function update(UpdateTicketRequest $request, User $user, Ticket $ticket)
     {
-        // PATCH
-        try {
-            $ticket = Ticket::where('id', $ticket_id)
-                        ->where('user_id', $author_id)
-                        ->firstOrFail();
-
-            if($this->isAble('update', $ticket)) {
-                $ticket->update($request->mappedAttributes());
-                return new TicketResource($ticket);
-            }
-
-            return $this->error('You are not allowed to update that resource', 401);
-
-        } catch (ModelNotFoundException $exception) {
-            return $this->error('Ticket cannot be found.', 404);
+        if($this->isAble('update', $ticket)) {
+            $ticket->update($request->mappedAttributes());
+            return new TicketResource($ticket);
         }
+
+        return $this->error('You are not allowed to update that resource', 401);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($author_id, $ticket_id)
+    public function destroy(User $author, Ticket $ticket)
     {
-        try {
-            $ticket = Ticket::where('id', $ticket_id)
-                        ->where('user_id', $author_id)
-                        ->firstOrFail();
-
-            if($this->isAble('delete', $ticket)){
-                $ticket->delete();
-                return $this->ok('Ticket Successfully deleted');
-            }
-
-            return $this->error('You are not allowed to delete that resource', 401);
-
-        } catch (ModelNotFoundException $exception) {
-            return $this->error('Ticket cannot be found.', 404);
+        if($this->isAble('delete', $ticket)){
+            $ticket->delete();
+            return $this->ok('Ticket Successfully deleted');
         }
+        return $this->error('You are not allowed to delete that resource', 401);
     }
 }

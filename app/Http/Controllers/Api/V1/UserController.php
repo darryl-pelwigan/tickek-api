@@ -34,7 +34,7 @@ class UserController extends ApiController
             return new UserResource(User::create($request->mappedAttributes()));
 
         }
-        return $this->error('You are not allowed to create that resource', 401);
+        return $this->notAuthorized('You are not allowed to create that resource', 401);
     }
 
     /**
@@ -52,66 +52,44 @@ class UserController extends ApiController
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateUserRequest $request, $user_id)
+    // PATCH
+    public function update(UpdateUserRequest $request, User $user)
     {
-        // PATCH
-        try {
-            $user = User::findOrFail($user_id);
+        // policy
+        if($this->isAble('update', $user)) {
+            $user->update($request->mappedAttributes());
 
-            // policy
-            if($this->isAble('update', $user)) {
-                $user->update($request->mappedAttributes());
-
-                return new UserResource($user);
-            }
-
-            return $this->error('You are not allowed to update that resource', 401);
-
-        } catch (ModelNotFoundException $exception) {
-            return $this->error('User cannot be found.', 404);
+            return new UserResource($user);
         }
+
+        return $this->notAuthorized('You are not allowed to update that resource', 401);
     }
 
-    public function replace(ReplaceUserRequest $request, $user_id)
+    // PUT
+    public function replace(ReplaceUserRequest $request, User $user)
     {
-        // PUT
-        try {
-            $user = User::findOrFail($user_id);
+        // policy
+        if($this->isAble('replace', $user)) {
+            $user->update($request->mappedAttributes());
 
-            // policy
-            if($this->isAble('replace', $user)) {
-                $user->update($request->mappedAttributes());
-
-                return new UserResource($user);
-            }
-
-            return $this->error('You are not allowed to update that resource', 401);
-
-        } catch (ModelNotFoundException $exception) {
-            return $this->error('User cannot be found.', 404);
+            return new UserResource($user);
         }
+
+        return $this->notAuthorized('You are not allowed to update that resource', 401);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($user_id)
+    public function destroy(User $user)
     {
-        try {
-            $user = User::findOrFail($user_id);
+        // policy
+        if($this->isAble('delete', $user)) {
+            $user->delete();
 
-            // policy
-            if($this->isAble('delete', $user)) {
-                $user->delete();
-
-                return $this->ok('User Successfully deleted');
-            }
-
-            return $this->error('You are not allowed to delete that resource', 401);
-
-        } catch (ModelNotFoundException $exception) {
-            return $this->error('User cannot be found.', 404);
-
+            return $this->ok('User Successfully deleted');
         }
+
+        return $this->notAuthorized('You are not allowed to delete that resource', 401);
     }
 }
