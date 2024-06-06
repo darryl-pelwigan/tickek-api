@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Permissions\V1\Abilities;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class StoreTicketRequest extends BaseTicketRequest
 {
@@ -22,18 +23,28 @@ class StoreTicketRequest extends BaseTicketRequest
      */
     public function rules(): array
     {
-        $authoIdAttr = $this->routeIs('tickets.store') ? 'data.relationships.author.data.id' : 'author';
-        $user = $this->user();
+        $isTicketController = $this->routeIs('tickets.store');
+        $authoIdAttr = $isTicketController ? 'data.relationships.author.data.id' : 'author';
+        $user = Auth::user();
         $authorRule = 'required|integer|exists:users,id';
 
         $rules = [
+            'data' => 'required|array',
+            'data.attributes' => 'required|array',
             'data.attributes.title' => 'required|string',
             'data.attributes.description' => 'required|string',
             'data.attributes.status' => 'required|string|in:A,C,H,X',
-            $authoIdAttr => $authorRule .'|size:' . $user->id
         ];
 
-        if($this->user()->tokenCan(Abilities::CreateTicket)) {
+        if($isTicketController) {
+            $rules['data.relationships'] = 'required|array';
+            $rules['data.relationships.author'] = 'required|array';
+            $rules['data.relationships.author.data'] = 'required|array';
+        }
+
+        $rules[$authoIdAttr] = $authorRule .'|size:' . $user->id;
+
+        if($user->tokenCan(Abilities::CreateTicket)) {
             $rules[$authoIdAttr] = $authorRule;
         }
 
@@ -48,5 +59,37 @@ class StoreTicketRequest extends BaseTicketRequest
                 'author' => $this->route('author')
             ]);
         }
+    }
+
+    public function bodyParameters()
+    {
+        $documentation = [
+            'data.attributes.title' => [
+                'description' => "The ticket's title (method)",
+                'example' => 'No-example'
+            ],
+            'data.attributes.description' => [
+                'description' => "The ticket's description",
+                'example' => 'No-example'
+            ],
+            'data.attributes.status' => [
+                'description' => "The ticket's status",
+                'example' => 'No-example'
+            ]
+        ];
+
+        if($this->routeIs('tickets.store')) {
+            $documentation['data.relationships.author.data.id'] = [
+                'description' => 'The author assigned to the ticket.',
+                'example' => 'No-example'
+            ];
+        } else {
+            $documentation['author'] = [
+                'description' => 'The author assigned to the ticket.',
+                'example' => 'No-example'
+            ];
+        }
+
+        return $documentation;
     }
 }
