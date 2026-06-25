@@ -1,66 +1,210 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Ticket — REST API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A **Laravel 10** REST API for managing support tickets with role-based access control, token authentication, and JSON:API-compliant responses.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## What This Project Demonstrates
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+This project was built to practice and demonstrate the following backend engineering skills:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Designing and building a versioned RESTful API (`/api/v1/...`)
+- Implementing **token-based authentication** with Laravel Sanctum
+- Enforcing **role-based authorization** using Laravel Policies and fine-grained token abilities
+- Structuring API responses in **JSON:API format** using API Resources
+- Applying **Form Request** classes for validation and input mapping
+- Writing **dynamic query filters** for flexible data retrieval
+- Setting up **database relationships**, factories, and seeders
+- Generating **API documentation** with the Scribe package
+- Applying **error handling** with consistent response helpers
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Tech Stack
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+| Layer | Technology |
+|---|---|
+| Framework | Laravel 10 |
+| PHP Version | 8.1+ |
+| Authentication | Laravel Sanctum (API tokens) |
+| Database | MySQL |
+| API Documentation | Scribe |
+| Testing | PHPUnit |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Core Features
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Authentication
+- `POST /api/login` — Authenticate and receive a time-bound API token (30 days)
+- `POST /api/register` — Register a new user account
+- `POST /api/logout` — Revoke the current token
 
-### Premium Partners
+### Ticket Management (`/api/v1/tickets`)
+Full CRUD for support tickets:
+- **List** tickets with filtering by title, status, and date ranges
+- **Create** a ticket (users create their own; managers can create on behalf of others)
+- **Show** a single ticket, optionally loading the author via `?include=author`
+- **Update** (`PATCH`) a ticket — partial field updates
+- **Replace** (`PUT`) a ticket — full field replacement
+- **Delete** a ticket
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### User Management (`/api/v1/users`)
+Manager-only access:
+- **List**, **create**, **show**, **update**, **replace**, and **delete** users
+- Show a user with their tickets via `?include=tickets`
 
-## Contributing
+### Author Routes (`/api/v1/authors`)
+- List only users who have created at least one ticket (uses a `DISTINCT JOIN`)
+- Manage tickets scoped to a specific author via `/api/v1/authors/{author}/tickets`
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## Authorization Design
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Two roles are supported: **Manager** and **Regular User**. Permissions are granted at token creation time via Sanctum token abilities.
 
-## Security Vulnerabilities
+| Ability | Manager | Regular User |
+|---|---|---|
+| `ticket:create` (any user) | Yes | No |
+| `ticket:own:create` | Yes | Yes |
+| `ticket:update` (any ticket) | Yes | No |
+| `ticket:own:update` | Yes | Yes |
+| `ticket:replace` (any ticket) | Yes | No |
+| `ticket:delete` (any ticket) | Yes | No |
+| `ticket:own:delete` | Yes | Yes |
+| `user:create / update / replace / delete` | Yes | No |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Authorization is enforced at the **policy layer** (`TicketPolicy`, `UserPolicy`) — not just in routes — so every controller action is independently protected.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## API Response Format
+
+All responses follow the **JSON:API specification**:
+
+```json
+{
+    "data": {
+        "type": "ticket",
+        "id": 1,
+        "attributes": {
+            "title": "Cannot log in",
+            "status": "A",
+            "description": "Login page returns 500 error.",
+            "createdAt": "2024-06-04T08:14:09.000000Z"
+        },
+        "relationships": {
+            "author": {
+                "data": { "type": "user", "id": 3 }
+            }
+        }
+    }
+}
+```
+
+Ticket status codes: `A` (Active) · `C` (Closed) · `H` (On Hold) · `X` (Cancelled)
+
+---
+
+## Filtering & Sorting
+
+Tickets and users support query parameter filtering:
+
+```
+GET /api/v1/tickets?filter[status]=A,C&filter[title]=login&sort=-createdAt
+GET /api/v1/users?filter[email]=@example.com&sort=name
+```
+
+Filtering is implemented via reusable `QueryFilter` classes (`TicketFilter`, `AuthorFilter`) that dynamically map query parameters to Eloquent scopes.
+
+---
+
+## Project Structure Highlights
+
+```
+app/
+├── Http/
+│   ├── Controllers/Api/
+│   │   ├── AuthController.php          # Login / Logout
+│   │   └── V1/
+│   │       ├── ApiController.php       # Base: include() + isAble() helpers
+│   │       ├── TicketController.php
+│   │       ├── UserController.php
+│   │       ├── AuthorsController.php
+│   │       └── AuthorTicketsController.php
+│   ├── Requests/Api/V1/               # Form Requests (validate + map input)
+│   └── Resources/V1/                  # API Resources (JSON:API format)
+├── Models/
+│   ├── User.php                        # HasMany tickets, HasApiTokens
+│   └── Ticket.php                      # BelongsTo user (author)
+├── Policies/V1/
+│   ├── TicketPolicy.php
+│   └── UserPolicy.php
+├── Permissions/V1/
+│   └── Abilities.php                   # Token ability constants
+└── Filters/V1/
+    ├── QueryFilter.php                 # Abstract base filter
+    ├── TicketFilter.php
+    └── AuthorFilter.php
+
+routes/
+├── api.php                             # Auth routes
+└── api_v1.php                          # Versioned resource routes
+
+database/
+├── migrations/                         # users, tickets, personal_access_tokens
+├── factories/                          # UserFactory, TicketFactory
+└── seeders/                            # 10 users, 100 tickets, 1 manager
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+- PHP 8.1+
+- Composer
+- MySQL
+
+### Installation
+
+```bash
+git clone <repo-url>
+cd ticket-please
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+
+Configure your database in `.env`, then:
+
+```bash
+php artisan migrate --seed
+php artisan serve
+```
+
+A manager account is seeded automatically:
+- **Email:** `manager@manager.com`
+- **Password:** `password`
+
+### API Documentation
+
+```bash
+php artisan scribe:generate
+```
+
+Documentation will be available at `http://localhost:8000/docs`.
+
+---
+
+## Key Concepts Practiced
+
+- **API Versioning** — Routes are namespaced under `/api/v1/` for forward-compatible design
+- **Sanctum Token Abilities** — Fine-grained permissions granted per token, not just per role
+- **Policy-Based Authorization** — Business rules are isolated from controllers
+- **JSON:API Format** — Consistent, spec-compliant response structure
+- **Form Requests** — Input validation and mapping decoupled from controllers
+- **QueryFilter Pattern** — Extensible dynamic filtering via query parameters
+- **Database Seeders + Factories** — Realistic test data for development
+- **Scribe Documentation** — Auto-generated, browsable API docs
