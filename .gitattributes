@@ -6,12 +6,11 @@
 *.md diff=markdown
 *.php diff=php
 
-vendor/* linguist-vendored
-public/css/* linguist-vendored
-public/js/* linguist-vendored
-storage/* linguist-vendored
-resources/css/* linguist-vendored
-resources/js/* linguist-vendored
+vendor/** linguist-vendored
+public/** linguist-vendored
+storage/** linguist-vendored
+resources/css/** linguist-vendored
+resources/js/** linguist-vendored
 
 /.github export-ignore
 CHANGELOG.md export-ignore
